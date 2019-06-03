@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.superyc.heiniu.mapper.ChargeOrderMapper">
+    <resultMap id="BaseResultMap" type="com.superyc.heiniu.bean.ChargeOrder">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="user_id" jdbcType="INTEGER" property="userId"/>
+        <result column="order_number" jdbcType="CHAR" property="orderNumber"/>
+        <result column="creation_time" jdbcType="TIMESTAMP" property="creationTime"/>
+        <result column="finish_time" jdbcType="TIMESTAMP" property="finishTime"/>
+        <result column="money" jdbcType="INTEGER" property="money"/>
+        <result column="device_id" jdbcType="INTEGER" property="deviceId"/>
+        <result column="path_id" jdbcType="INTEGER" property="pathId"/>
+        <result column="status" jdbcType="INTEGER" property="status"/>
+        <result column="pay_mode" jdbcType="INTEGER" property="payMode"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+        id,
+        user_id,
+        order_number,
+        creation_time,
+        finish_time,
+        money,
+        device_id,
+        path_id,
+        status,
+        pay_mode
+    </sql>
+    <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from bc_charge_order
+        where id = #{id,jdbcType=INTEGER}
+    </select>
+    <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
+        delete
+        from bc_charge_order
+        where id = #{id,jdbcType=INTEGER}
+    </delete>
+    <insert id="insert" parameterType="com.superyc.heiniu.bean.ChargeOrder">
+        insert into bc_charge_order (id, user_id, order_number,
+                                     creation_time, finish_time, money,
+                                     device_id, path_id, status,
+                                     pay_mode)
+        values (#{id,jdbcType=INTEGER}, #{userId,jdbcType=INTEGER}, #{orderNumber,jdbcType=CHAR},
+                #{creationTime,jdbcType=TIMESTAMP}, #{finishTime,jdbcType=TIMESTAMP}, #{money,jdbcType=INTEGER},
+                #{deviceId,jdbcType=INTEGER}, #{pathId,jdbcType=INTEGER}, #{status,jdbcType=INTEGER},
+                #{payMode,jdbcType=INTEGER})
+    </insert>
+    <insert id="insertSelective" parameterType="com.superyc.heiniu.bean.ChargeOrder">
+        insert into bc_charge_order
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">
+                id,
+            </if>
+            <if test="userId != null">
+                user_id,
+            </if>
+            <if test="orderNumber != null">
+                order_number,
+            </if>
+            <if test="creationTime != null">
+                creation_time,
+            </if>
+            <if test="finishTime != null">
+                finish_time,
+            </if>
+            <if test="money != null">
+                money,
+            </if>
+            <if test="deviceId != null">
+                device_id,
+            </if>
+            <if test="pathId != null">
+                path_id,
+            </if>
+            <if test="status != null">
+                status,
+            </if>
+            <if test="payMode != null">
+                pay_mode,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">
+                #{id,jdbcType=INTEGER},
+            </if>
+            <if test="userId != null">
+                #{userId,jdbcType=INTEGER},
+            </if>
+            <if test="orderNumber != null">
+                #{orderNumber,jdbcType=CHAR},
+            </if>
+            <if test="creationTime != null">
+                #{creationTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="finishTime != null">
+                #{finishTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="money != null">
+                #{money,jdbcType=INTEGER},
+            </if>
+            <if test="deviceId != null">
+                #{deviceId,jdbcType=INTEGER},
+            </if>
+            <if test="pathId != null">
+                #{pathId,jdbcType=INTEGER},
+            </if>
+            <if test="status != null">
+                #{status,jdbcType=INTEGER},
+            </if>
+            <if test="payMode != null">
+                #{payMode,jdbcType=INTEGER},
+            </if>
+        </trim>
+    </insert>
+    <update id="updateByPrimaryKeySelective" parameterType="com.superyc.heiniu.bean.ChargeOrder">
+        update bc_charge_order
+        <set>
+            <if test="userId != null">
+                user_id = #{userId,jdbcType=INTEGER},
+            </if>
+            <if test="orderNumber != null">
+                order_number = #{orderNumber,jdbcType=CHAR},
+            </if>
+            <if test="creationTime != null">
+                creation_time = #{creationTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="finishTime != null">
+                finish_time = #{finishTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="money != null">
+                money = #{money,jdbcType=INTEGER},
+            </if>
+            <if test="deviceId != null">
+                device_id = #{deviceId,jdbcType=INTEGER},
+            </if>
+            <if test="pathId != null">
+                path_id = #{pathId,jdbcType=INTEGER},
+            </if>
+            <if test="status != null">
+                status = #{status,jdbcType=INTEGER},
+            </if>
+            <if test="payMode != null">
+                pay_mode = #{payMode,jdbcType=INTEGER},
+            </if>
+        </set>
+        where id = #{id,jdbcType=INTEGER}
+    </update>
+    <update id="updateByPrimaryKey" parameterType="com.superyc.heiniu.bean.ChargeOrder">
+        update bc_charge_order
+        set user_id       = #{userId,jdbcType=INTEGER},
+            order_number  = #{orderNumber,jdbcType=CHAR},
+            creation_time = #{creationTime,jdbcType=TIMESTAMP},
+            finish_time   = #{finishTime,jdbcType=TIMESTAMP},
+            money         = #{money,jdbcType=INTEGER},
+            device_id     = #{deviceId,jdbcType=INTEGER},
+            path_id       = #{pathId,jdbcType=INTEGER},
+            status        = #{status,jdbcType=INTEGER},
+            pay_mode      = #{payMode,jdbcType=INTEGER}
+        where id = #{id,jdbcType=INTEGER}
+    </update>
+
+    <select id="selectFirstUnfinishedOrderByUserId" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        SELECT *
+        FROM bc_charge_order
+        WHERE user_id = #{userId}
+          AND status = 1
+        LIMIT 1
+    </select>
+</mapper>

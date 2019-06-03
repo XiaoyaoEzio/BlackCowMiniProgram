@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.superyc.heiniu.mapper.DeviceMapper">
+    <resultMap id="BaseResultMap" type="com.superyc.heiniu.bean.Device">
+        <id column="id" jdbcType="INTEGER" property="id"/>
+        <result column="device_name" jdbcType="VARCHAR" property="deviceName"/>
+        <result column="device_number" jdbcType="CHAR" property="deviceNumber"/>
+        <result column="enable" jdbcType="INTEGER" property="enable"/>
+        <result column="first_proxy_id" jdbcType="INTEGER" property="firstProxyId"/>
+        <result column="second_proxy_id" jdbcType="INTEGER" property="secondProxyId"/>
+        <result column="creation_time" jdbcType="TIMESTAMP" property="creationTime"/>
+        <result column="modification_time" jdbcType="TIMESTAMP" property="modificationTime"/>
+        <result column="proxy_mode" jdbcType="INTEGER" property="proxyMode"/>
+    </resultMap>
+    <sql id="Base_Column_List">
+        id,
+        device_name,
+        device_number,
+        enable,
+        first_proxy_id,
+        second_proxy_id,
+        creation_time,
+        modification_time,
+        proxy_mode
+    </sql>
+    <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from bc_device
+        where id = #{id,jdbcType=INTEGER}
+    </select>
+    <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
+        delete
+        from bc_device
+        where id = #{id,jdbcType=INTEGER}
+    </delete>
+    <insert id="insert" parameterType="com.superyc.heiniu.bean.Device">
+        insert into bc_device (id, device_name, device_number,
+                               enable, first_proxy_id, second_proxy_id,
+                               creation_time, modification_time, proxy_mode)
+        values (#{id,jdbcType=INTEGER}, #{deviceName,jdbcType=VARCHAR}, #{deviceNumber,jdbcType=CHAR},
+                #{enable,jdbcType=INTEGER}, #{firstProxyId,jdbcType=INTEGER}, #{secondProxyId,jdbcType=INTEGER},
+                #{creationTime,jdbcType=TIMESTAMP}, #{modificationTime,jdbcType=TIMESTAMP},
+                #{proxyMode,jdbcType=INTEGER})
+    </insert>
+    <insert id="insertSelective" parameterType="com.superyc.heiniu.bean.Device">
+        insert into bc_device
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="id != null">
+                id,
+            </if>
+            <if test="deviceName != null">
+                device_name,
+            </if>
+            <if test="deviceNumber != null">
+                device_number,
+            </if>
+            <if test="enable != null">
+                enable,
+            </if>
+            <if test="firstProxyId != null">
+                first_proxy_id,
+            </if>
+            <if test="secondProxyId != null">
+                second_proxy_id,
+            </if>
+            <if test="creationTime != null">
+                creation_time,
+            </if>
+            <if test="modificationTime != null">
+                modification_time,
+            </if>
+            <if test="proxyMode != null">
+                proxy_mode,
+            </if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="id != null">
+                #{id,jdbcType=INTEGER},
+            </if>
+            <if test="deviceName != null">
+                #{deviceName,jdbcType=VARCHAR},
+            </if>
+            <if test="deviceNumber != null">
+                #{deviceNumber,jdbcType=CHAR},
+            </if>
+            <if test="enable != null">
+                #{enable,jdbcType=INTEGER},
+            </if>
+            <if test="firstProxyId != null">
+                #{firstProxyId,jdbcType=INTEGER},
+            </if>
+            <if test="secondProxyId != null">
+                #{secondProxyId,jdbcType=INTEGER},
+            </if>
+            <if test="creationTime != null">
+                #{creationTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="modificationTime != null">
+                #{modificationTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="proxyMode != null">
+                #{proxyMode,jdbcType=INTEGER},
+            </if>
+        </trim>
+    </insert>
+
+    <select id="selectByDeviceNum" parameterType="java.lang.String" resultMap="BaseResultMap">
+        SELECT *
+        FROM bc_device
+        WHERE device_number = #{deviceNum}
+    </select>
+
+    <select id="selectDeviceNumById" parameterType="java.lang.Integer" resultType="java.lang.String">
+        SELECT device_number
+        FROM bc_device
+        WHERE id = #{deviceId}
+    </select>
+
+    <update id="updateByPrimaryKeySelective" parameterType="com.superyc.heiniu.bean.Device">
+        update bc_device
+        <set>
+            <if test="deviceName != null">
+                device_name = #{deviceName,jdbcType=VARCHAR},
+            </if>
+            <if test="deviceNumber != null">
+                device_number = #{deviceNumber,jdbcType=CHAR},
+            </if>
+            <if test="enable != null">
+                enable = #{enable,jdbcType=INTEGER},
+            </if>
+            <if test="firstProxyId != null">
+                first_proxy_id = #{firstProxyId,jdbcType=INTEGER},
+            </if>
+            <if test="secondProxyId != null">
+                second_proxy_id = #{secondProxyId,jdbcType=INTEGER},
+            </if>
+            <if test="creationTime != null">
+                creation_time = #{creationTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="modificationTime != null">
+                modification_time = #{modificationTime,jdbcType=TIMESTAMP},
+            </if>
+            <if test="proxyMode != null">
+                proxy_mode = #{proxyMode,jdbcType=INTEGER},
+            </if>
+        </set>
+        where id = #{id,jdbcType=INTEGER}
+    </update>
+    <update id="updateByPrimaryKey" parameterType="com.superyc.heiniu.bean.Device">
+        update bc_device
+        set device_name       = #{deviceName,jdbcType=VARCHAR},
+            device_number     = #{deviceNumber,jdbcType=CHAR},
+            enable            = #{enable,jdbcType=INTEGER},
+            first_proxy_id    = #{firstProxyId,jdbcType=INTEGER},
+            second_proxy_id   = #{secondProxyId,jdbcType=INTEGER},
+            creation_time     = #{creationTime,jdbcType=TIMESTAMP},
+            modification_time = #{modificationTime,jdbcType=TIMESTAMP},
+            proxy_mode        = #{proxyMode,jdbcType=INTEGER}
+        where id = #{id,jdbcType=INTEGER}
+    </update>
+</mapper>
