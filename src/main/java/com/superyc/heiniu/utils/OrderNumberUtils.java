@@ -13,6 +13,7 @@ public class OrderNumberUtils {
     private static final int RANDOM_BITS = 4;
     private static final String RECHARGE_TYPE = "1";
     private static final String CONSUME_TYPE = "2";
+    private static final String TRANSFER_TYPE = "3";
 
     public static String getRechargeOrderNumber() {
         return RECHARGE_TYPE + getBaseOrderNumber();
@@ -21,6 +22,8 @@ public class OrderNumberUtils {
     public static String getConsumeOrderNumber() {
         return CONSUME_TYPE + getBaseOrderNumber();
     }
+
+    public static String getTransferOrderNumber() { return TRANSFER_TYPE + getBaseOrderNumber();}
 
     public static int getOrderType(String orderNumber) {
         String typeString = orderNumber.substring(0, 1);

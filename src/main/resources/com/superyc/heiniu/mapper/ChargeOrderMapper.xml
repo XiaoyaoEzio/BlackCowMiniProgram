@@ -7,6 +7,7 @@
         <result column="order_number" jdbcType="CHAR" property="orderNumber"/>
         <result column="creation_time" jdbcType="TIMESTAMP" property="creationTime"/>
         <result column="finish_time" jdbcType="TIMESTAMP" property="finishTime"/>
+        <result column="rank_id" jdbcType="INTEGER" property="rankId"/>
         <result column="money" jdbcType="INTEGER" property="money"/>
         <result column="device_id" jdbcType="INTEGER" property="deviceId"/>
         <result column="path_id" jdbcType="INTEGER" property="pathId"/>
@@ -19,6 +20,7 @@
         order_number,
         creation_time,
         finish_time,
+        rank_id,
         money,
         device_id,
         path_id,
@@ -38,13 +40,13 @@
     </delete>
     <insert id="insert" parameterType="com.superyc.heiniu.bean.ChargeOrder">
         insert into bc_charge_order (id, user_id, order_number,
-                                     creation_time, finish_time, money,
-                                     device_id, path_id, status,
-                                     pay_mode)
+                                     creation_time, finish_time, rank_id,
+                                     money, device_id, path_id,
+                                     status, pay_mode)
         values (#{id,jdbcType=INTEGER}, #{userId,jdbcType=INTEGER}, #{orderNumber,jdbcType=CHAR},
-                #{creationTime,jdbcType=TIMESTAMP}, #{finishTime,jdbcType=TIMESTAMP}, #{money,jdbcType=INTEGER},
-                #{deviceId,jdbcType=INTEGER}, #{pathId,jdbcType=INTEGER}, #{status,jdbcType=INTEGER},
-                #{payMode,jdbcType=INTEGER})
+                #{creationTime,jdbcType=TIMESTAMP}, #{finishTime,jdbcType=TIMESTAMP}, #{rankId,jdbcType=INTEGER},
+                #{money,jdbcType=INTEGER}, #{deviceId,jdbcType=INTEGER}, #{pathId,jdbcType=INTEGER},
+                #{status,jdbcType=INTEGER}, #{payMode,jdbcType=INTEGER})
     </insert>
     <insert id="insertSelective" parameterType="com.superyc.heiniu.bean.ChargeOrder">
         insert into bc_charge_order
@@ -63,6 +65,9 @@
             </if>
             <if test="finishTime != null">
                 finish_time,
+            </if>
+            <if test="rankId != null">
+                rank_id,
             </if>
             <if test="money != null">
                 money,
@@ -96,6 +101,9 @@
             <if test="finishTime != null">
                 #{finishTime,jdbcType=TIMESTAMP},
             </if>
+            <if test="rankId != null">
+                #{rankId,jdbcType=INTEGER},
+            </if>
             <if test="money != null">
                 #{money,jdbcType=INTEGER},
             </if>
@@ -128,6 +136,9 @@
             <if test="finishTime != null">
                 finish_time = #{finishTime,jdbcType=TIMESTAMP},
             </if>
+            <if test="rankId != null">
+                rank_id = #{rankId,jdbcType=INTEGER},
+            </if>
             <if test="money != null">
                 money = #{money,jdbcType=INTEGER},
             </if>
@@ -152,6 +163,7 @@
             order_number  = #{orderNumber,jdbcType=CHAR},
             creation_time = #{creationTime,jdbcType=TIMESTAMP},
             finish_time   = #{finishTime,jdbcType=TIMESTAMP},
+            rank_id       = #{rankId,jdbcType=INTEGER},
             money         = #{money,jdbcType=INTEGER},
             device_id     = #{deviceId,jdbcType=INTEGER},
             path_id       = #{pathId,jdbcType=INTEGER},

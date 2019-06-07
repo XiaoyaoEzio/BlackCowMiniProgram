@@ -2,26 +2,24 @@ package com.superyc.heiniu.api.wx;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.superyc.heiniu.bean.CommonResponse;
+import com.superyc.heiniu.bean.ProxyCilentBankInfo;
+import com.superyc.heiniu.bean.TransferOrder;
 import com.superyc.heiniu.enums.ResponseCodeEnum;
-import com.superyc.heiniu.utils.HttpUtils;
-import com.superyc.heiniu.utils.JsonUtils;
-import com.superyc.heiniu.utils.RandomUtils;
+import com.superyc.heiniu.utils.*;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.Assert;
 import org.springframework.util.DigestUtils;
 
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
-import javax.xml.bind.Marshaller;
-import javax.xml.bind.Unmarshaller;
 import javax.xml.bind.annotation.XmlAccessOrder;
 import javax.xml.bind.annotation.XmlAccessorOrder;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
-import java.io.*;
+import java.io.IOException;
+import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -33,10 +31,13 @@ import static java.lang.Thread.sleep;
  * 与微信服务器交互的api接口
  */
 @Component
+@SuppressWarnings("unused")
 public class WxApi {
+    private static Logger LOG = LoggerFactory.getLogger(WxApi.class);
 
     private static String code2sessionUrl;
     private static String accessTokenUrl;
+    private static String transferToBankUrl;
     private static String appIdKey;
     private static String appIdValue;
     private static String secretKey;
@@ -51,13 +52,13 @@ public class WxApi {
     private static String tradeType;
     private static String payKey;
     private static String payBody;
-
-    private static Logger log = LoggerFactory.getLogger(WxApi.class);
+    private static String pemPath;
 
     private static final String FAIL = "FAIL";
-    private static final String SUCCESS = "SUCCESS";
+    public static final String SUCCESS = "SUCCESS";
 
     private static final AccessTokenResult ACCESS_TOKEN_RESULT = new AccessTokenResult();
+
     /**
      * 使用code从微信后台换取用户相关信息
      * 文档：https://developers.weixin.qq.com/miniprogram/dev/api/code2Session.html
@@ -72,7 +73,7 @@ public class WxApi {
                 .toString();
 
         String response = HttpUtils.get(authUrl);
-        log.info("wx code2session response: {}", response);
+        LOG.info("wx code2session response: {}", response);
         return JsonUtils.parseString(response, WxCode2SessionResult.class);
     }
 
@@ -80,7 +81,7 @@ public class WxApi {
      * 统一下单
      * 文档：https://pay.weixin.qq.com/wiki/doc/api/wxa/wxa_api.php?chapter=9_1&index=1
      */
-    public static CommonResponse unifiedOrder(String orderNumber, String openId, String payment, String userIp) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException, JAXBException, IOException {
+    public static CommonResponse unifiedOrder(String orderNumber, String openId, String payment, String userIp) throws IOException {
         UnifiedOrderParam param = new UnifiedOrderParam();
         param.setAppId(appIdValue);
         param.setMchId(mchId);
@@ -95,35 +96,36 @@ public class WxApi {
         param.setSign(generateSign(param, UnifiedOrderParam.class, payKey));
 
         // 生成参数xml
-        JAXBContext context = JAXBContext.newInstance(UnifiedOrderParam.class);
+        /*JAXBContext context = JAXBContext.newInstance(UnifiedOrderParam.class);
         Marshaller marshaller = context.createMarshaller();
         marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
         marshaller.setProperty(Marshaller.JAXB_FRAGMENT, true);
         Writer writer = new StringWriter();
-        marshaller.marshal(param, writer);
-        String xmlParam = writer.toString();
+        marshaller.marshal(param, writer);*/
+        String xmlParam = XmlUtils.getXmlStr(param, UnifiedOrderParam.class);
 
         String response = HttpUtils.postXml(unifiedOrderUrl, xmlParam);
 
         // 解析响应参数
-        context = JAXBContext.newInstance(UnifiedOrderResult.class);
-        Unmarshaller unmarshaller = context.createUnmarshaller();
-        UnifiedOrderResult result = (UnifiedOrderResult) unmarshaller.unmarshal(new StringReader(response));
+        //context = JAXBContext.newInstance(UnifiedOrderResult.class);
+        //Unmarshaller unmarshaller = context.createUnmarshaller();
+        //UnifiedOrderResult result = (UnifiedOrderResult) unmarshaller.unmarshal(new StringReader(response));
+        UnifiedOrderResult result = XmlUtils.parseXml(response, UnifiedOrderResult.class);
         if (result.getReturnCode().equals(FAIL)) {
-            log.error("order number: {}; result: {}", orderNumber, result.getReturnMsg());
+            LOG.error("order number: {}; result: {}", orderNumber, result.getReturnMsg());
             return CommonResponse.failure(result.getReturnMsg());
         }
 
         if (result.getResultCode().equals(FAIL)) {
             String errMsg = result.getErrCode() + "-" + result.getErrCodeDes();
-            log.error("order number: {}; result: {}", orderNumber, errMsg);
+            LOG.error("order number: {}; result: {}", orderNumber, errMsg);
             return CommonResponse.failure(errMsg);
         }
 
         // return_code 和 result_code 都是 SUCCESS 时
         boolean checkSign = checkSign(result, UnifiedOrderResult.class);
         if (!checkSign) {
-            log.error("签名校验失败，orderNumber：{}", orderNumber);
+            LOG.error("签名校验失败，orderNumber：{}", orderNumber);
         }
 
         return CommonResponse.success(result.getPrepayId());
@@ -133,8 +135,7 @@ public class WxApi {
      * 再次签名，生成前端响应
      * 文档：https://pay.weixin.qq.com/wiki/doc/api/wxa/wxa_api.php?chapter=7_7&index=3
      */
-    public static CommonResponse reSign(String prePayId) throws NoSuchMethodException, IllegalAccessException,
-            InvocationTargetException {
+    public static CommonResponse reSign(String prePayId) {
         ReSignParam param = new ReSignParam();
         param.setAppId(appIdValue);
         param.setNonceStr(RandomUtils.getUUID());
@@ -150,13 +151,13 @@ public class WxApi {
      * 获取access_token, 用于与微信后端交互
      * 文档：https://developers.weixin.qq.com/miniprogram/dev/api/getAccessToken.html
      * errCode 类型
-     *      -1	    系统繁忙，此时请开发者稍候再试
-     *       0	    请求成功
-     *       40001	AppSecret 错误或者 AppSecret 不属于这个小程序，请开发者确认 AppSecret 的正确性
-     *       40002	请确保 grant_type 字段值为 client_credential
-     *       40013	不合法的 AppID，请开发者检查 AppID 的正确性，避免异常字符，注意大小写
+     * -1	    系统繁忙，此时请开发者稍候再试
+     * 0	    请求成功
+     * 40001	AppSecret 错误或者 AppSecret 不属于这个小程序，请开发者确认 AppSecret 的正确性
+     * 40002	请确保 grant_type 字段值为 client_credential
+     * 40013	不合法的 AppID，请开发者检查 AppID 的正确性，避免异常字符，注意大小写
      */
-    public static String  getAccessToken() throws IOException, InterruptedException {
+    private static String getAccessToken() throws IOException, InterruptedException {
         long expiredTime = ACCESS_TOKEN_RESULT.getExpiredTime();
         if (expiredTime > System.currentTimeMillis()) {
             return ACCESS_TOKEN_RESULT.getAccessToken();
@@ -164,17 +165,17 @@ public class WxApi {
 
         String url = baseUrl(accessTokenUrl, grantTypeValue4Access).toString();
         String response = HttpUtils.get(url);
-        log.info("access_token response: {}", response);
+        LOG.info("access_token response: {}", response);
         AccessTokenResult result = JsonUtils.parseString(response, AccessTokenResult.class);
         int errCode = result.getErrCode();
         if (errCode == 0) {
             ACCESS_TOKEN_RESULT.update(result);
             return ACCESS_TOKEN_RESULT.getAccessToken();
-        }else if (errCode == -1) {
+        } else if (errCode == -1) {
             sleep(500);
             return getAccessToken();
-        }else {
-            log.error("access_token error: {}", response);
+        } else {
+            LOG.error("access_token error: {}", response);
             return null;
         }
     }
@@ -182,8 +183,7 @@ public class WxApi {
     /**
      * 生成签名，熊猫云的签名方法与微信的签名方法一致
      */
-    public static <T> String generateSign(Object param, Class<T> clazz, String secret) throws NoSuchMethodException,
-            InvocationTargetException, IllegalAccessException {
+    public static <T> String generateSign(Object param, Class<T> clazz, String secret) {
         // 获取所有字段
         Field[] fieldsAsArray = clazz.getDeclaredFields();
 
@@ -207,9 +207,32 @@ public class WxApi {
             }
 
             String methodName = fieldName.substring(0, 1).toUpperCase() + fieldName.substring(1);
-            Method getMethod = clazz.getMethod("get" + methodName);
-            Method setMethod = clazz.getMethod("set" + methodName, String.class);
-            String value = (String) getMethod.invoke(param);
+
+            Method getMethod = null;
+            try {
+                getMethod = clazz.getMethod("get" + methodName);
+            } catch (NoSuchMethodException e) {
+                LOG.error(e.getMessage());
+                e.printStackTrace();
+            }
+            Assert.notNull(getMethod);
+
+            Method setMethod = null;
+            try {
+                setMethod = clazz.getMethod("set" + methodName, String.class);
+            } catch (NoSuchMethodException e) {
+                LOG.error(e.getMessage());
+                e.printStackTrace();
+            }
+            Assert.notNull(setMethod);
+
+            String value = null;
+            try {
+                value = (String) getMethod.invoke(param);
+            } catch (InvocationTargetException | IllegalAccessException e) {
+                LOG.error(e.getMessage());
+                e.printStackTrace();
+            }
 
             if (value != null) {
                 String mapKey = fieldName;
@@ -237,7 +260,7 @@ public class WxApi {
             sb.append(entry.getKey()).append("=").append(entry.getValue()).append("&");
         }
         sb.append("key=").append(secret);
-        log.debug("param string with key: {}", sb.toString());
+        LOG.debug("param string with key: {}", sb.toString());
 
         return DigestUtils.md5DigestAsHex(sb.toString().getBytes()).toUpperCase();
     }
@@ -245,25 +268,44 @@ public class WxApi {
     /**
      * 校验签名
      */
-    public static <T> boolean checkSign(Signable param, Class<T> clazz) throws NoSuchMethodException,
-            IllegalAccessException, InvocationTargetException {
+    public static <T> boolean checkSign(Signable param, Class<T> clazz) {
         String resultSign = param.getSign();
         if (StringUtils.isBlank(resultSign)) {
-            log.error("sign为空");
+            LOG.error("sign为空");
             return false;
         }
 
         param.setSign(null);
         String generateSign = generateSign(param, clazz, payKey);
         if (!resultSign.equals(generateSign)) {
-            log.error("校验sign失败");
+            LOG.error("校验sign失败");
             return false;
         }
 
         return true;
     }
 
+    /**
+     * 向代理商银行卡转账
+     * 文档：https://pay.weixin.qq.com/wiki/doc/api/tools/mch_pay.php?chapter=24_2
+     */
+    public static WxApi.TransferResult transferToBank(ProxyCilentBankInfo bankInfo, TransferOrder order) throws IOException {
+        TransferParam param = new TransferParam();
+        param.setAmount(order.getAmount());
+        param.setBankCode(bankInfo.getBankCode());
+        param.setDesc("用户充值");
+        param.setEncBankNo(RSAUtils.encrypt(bankInfo.getCardNum(), pemPath));
+        param.setEncTrueName(RSAUtils.encrypt(bankInfo.getPayeeName(), pemPath));
+        param.setMchId(mchId);
+        param.setNoticeStr(RandomUtils.getUUID());
+        param.setPartnerTradeNo(order.getOrderNumber());
+        param.setSign(generateSign(param, TransferParam.class, payKey));
+        String xmlParam = XmlUtils.getXmlStr(param, TransferParam.class);
 
+        String response = HttpUtils.postXml(transferToBankUrl, xmlParam);
+
+        return XmlUtils.parseXml(response, TransferResult.class);
+    }
 
     private static StringBuilder baseUrl(String uri, String grantType) {
         return new StringBuilder()
@@ -383,6 +425,7 @@ public class WxApi {
     /**
      * 再次签名参数
      */
+    @SuppressWarnings("SameParameterValue")
     public static class ReSignParam {
         @JsonProperty(value = "appid")
         private String appId;
@@ -398,7 +441,7 @@ public class WxApi {
             return appId;
         }
 
-        public void setAppId(String appId) {
+        void setAppId(String appId) {
             this.appId = appId;
         }
 
@@ -406,7 +449,7 @@ public class WxApi {
             return timeStamp;
         }
 
-        public void setTimeStamp(String timeStamp) {
+        void setTimeStamp(String timeStamp) {
             this.timeStamp = timeStamp;
         }
 
@@ -414,7 +457,7 @@ public class WxApi {
             return nonceStr;
         }
 
-        public void setNonceStr(String nonceStr) {
+        void setNonceStr(String nonceStr) {
             this.nonceStr = nonceStr;
         }
 
@@ -422,7 +465,7 @@ public class WxApi {
             return packages;
         }
 
-        public void setPackages(String packages) {
+        void setPackages(String packages) {
             this.packages = packages;
         }
 
@@ -430,7 +473,7 @@ public class WxApi {
             return signType;
         }
 
-        public void setSignType(String signType) {
+        void setSignType(String signType) {
             this.signType = signType;
         }
 
@@ -438,7 +481,7 @@ public class WxApi {
             return paySign;
         }
 
-        public void setPaySign(String paySign) {
+        void setPaySign(String paySign) {
             this.paySign = paySign;
         }
     }
@@ -478,7 +521,7 @@ public class WxApi {
         }
 
         @XmlElement(name = "appid")
-        public void setAppId(String appId) {
+        void setAppId(String appId) {
             this.appId = appId;
         }
 
@@ -487,7 +530,7 @@ public class WxApi {
         }
 
         @XmlElement(name = "mch_id")
-        public void setMchId(String mchId) {
+        void setMchId(String mchId) {
             this.mchId = mchId;
         }
 
@@ -504,8 +547,8 @@ public class WxApi {
             return nonceStr;
         }
 
-        @XmlElement(name = "nonce_str")
-        public void setNonceStr(String nonceStr) {
+        @XmlElement(name = "nonceStr")
+        void setNonceStr(String nonceStr) {
             this.nonceStr = nonceStr;
         }
 
@@ -514,7 +557,7 @@ public class WxApi {
         }
 
         @XmlElement(name = "sign")
-        public void setSign(String sign) {
+        void setSign(String sign) {
             this.sign = sign;
         }
 
@@ -532,7 +575,7 @@ public class WxApi {
         }
 
         @XmlElement(name = "body")
-        public void setBody(String body) {
+        void setBody(String body) {
             this.body = body;
         }
 
@@ -559,7 +602,7 @@ public class WxApi {
         }
 
         @XmlElement(name = "out_trade_no")
-        public void setOutTradeNo(String outTradeNo) {
+        void setOutTradeNo(String outTradeNo) {
             this.outTradeNo = outTradeNo;
         }
 
@@ -577,7 +620,7 @@ public class WxApi {
         }
 
         @XmlElement(name = "total_fee")
-        public void setTotalFee(String totalFee) {
+        void setTotalFee(String totalFee) {
             this.totalFee = totalFee;
         }
 
@@ -586,7 +629,7 @@ public class WxApi {
         }
 
         @XmlElement(name = "spbill_create_ip")
-        public void setSpbillCreateIp(String spbillCreateIp) {
+        void setSpbillCreateIp(String spbillCreateIp) {
             this.spbillCreateIp = spbillCreateIp;
         }
 
@@ -622,7 +665,7 @@ public class WxApi {
         }
 
         @XmlElement(name = "notify_url")
-        public void setNotifyUrl(String notifyUrl) {
+        void setNotifyUrl(String notifyUrl) {
             this.notifyUrl = notifyUrl;
         }
 
@@ -631,7 +674,7 @@ public class WxApi {
         }
 
         @XmlElement(name = "trade_type")
-        public void setTradeType(String tradeType) {
+        void setTradeType(String tradeType) {
             this.tradeType = tradeType;
         }
 
@@ -658,7 +701,7 @@ public class WxApi {
         }
 
         @XmlElement(name = "openid")
-        public void setOpenId(String openId) {
+        void setOpenId(String openId) {
             this.openId = openId;
         }
 
@@ -707,7 +750,7 @@ public class WxApi {
             this.deviceInfo = deviceInfo;
         }
 
-        public String getErrCode() {
+        String getErrCode() {
             return errCode;
         }
 
@@ -716,7 +759,7 @@ public class WxApi {
             this.errCode = errCode;
         }
 
-        public String getErrCodeDes() {
+        String getErrCodeDes() {
             return errCodeDes;
         }
 
@@ -725,7 +768,7 @@ public class WxApi {
             this.errCodeDes = errCodeDes;
         }
 
-        public String getReturnCode() {
+        String getReturnCode() {
             return returnCode;
         }
 
@@ -734,7 +777,7 @@ public class WxApi {
             this.returnCode = returnCode;
         }
 
-        public String getReturnMsg() {
+        String getReturnMsg() {
             return returnMsg;
         }
 
@@ -765,7 +808,7 @@ public class WxApi {
             return nonceStr;
         }
 
-        @XmlElement(name = "nonce_str")
+        @XmlElement(name = "nonceStr")
         public void setNonceStr(String nonceStr) {
             this.nonceStr = nonceStr;
         }
@@ -788,7 +831,7 @@ public class WxApi {
             this.sign = sign;
         }
 
-        public String getResultCode() {
+        String getResultCode() {
             return resultCode;
         }
 
@@ -825,7 +868,7 @@ public class WxApi {
             this.codeUrl = codeUrl;
         }
 
-        public String getPrepayId() {
+        String getPrepayId() {
             return prepayId;
         }
 
@@ -954,7 +997,8 @@ public class WxApi {
     /**
      * 请求access_token后获取的参数
      */
-    public static class AccessTokenResult{
+    @SuppressWarnings("WeakerAccess")
+    public static class AccessTokenResult {
         @JsonProperty(value = "access_token")
         private String accessToken;
         @JsonProperty(value = "expires_in")
@@ -1016,9 +1060,258 @@ public class WxApi {
         }
     }
 
+    /**
+     * 转账给代理商银行卡使用的参数
+     */
+    @SuppressWarnings("WeakerAccess")
+    @XmlRootElement(name = "xml")
+    @XmlAccessorOrder(XmlAccessOrder.ALPHABETICAL)
+    private static class TransferParam {
+        private int amount;
+        private String bankCode;
+        private String desc;
+        private String encBankNo;
+        private String encTrueName;
+        private String mchId;
+        private String noticeStr;
+        private String partnerTradeNo;
+        private String sign;
+
+        public int getAmount() {
+            return amount;
+        }
+
+        public void setAmount(int amount) {
+            this.amount = amount;
+        }
+
+        public String getBankCode() {
+            return bankCode;
+        }
+
+        @XmlElement(name = "bank_code")
+        public void setBankCode(String bankCode) {
+            this.bankCode = bankCode;
+        }
+
+        public String getDesc() {
+            return desc;
+        }
+
+        public void setDesc(String desc) {
+            this.desc = desc;
+        }
+
+        public String getEncBankNo() {
+            return encBankNo;
+        }
+
+        @XmlElement(name = "enc_bank_no")
+        public void setEncBankNo(String encBankNo) {
+            this.encBankNo = encBankNo;
+        }
+
+        public String getEncTrueName() {
+            return encTrueName;
+        }
+
+        @XmlElement(name = "enc_true_name")
+        public void setEncTrueName(String encTrueName) {
+            this.encTrueName = encTrueName;
+        }
+
+        public String getMchId() {
+            return mchId;
+        }
+
+        @XmlElement(name = "mch_id")
+        public void setMchId(String mchId) {
+            this.mchId = mchId;
+        }
+
+        public String getNoticeStr() {
+            return noticeStr;
+        }
+
+        @XmlElement(name = "notice_str")
+        public void setNoticeStr(String noticeStr) {
+            this.noticeStr = noticeStr;
+        }
+
+        public String getPartnerTradeNo() {
+            return partnerTradeNo;
+        }
+
+        @XmlElement(name = "partner_trade_no")
+        public void setPartnerTradeNo(String partnerTradeNo) {
+            this.partnerTradeNo = partnerTradeNo;
+        }
+
+        public String getSign() {
+            return sign;
+        }
+
+        public void setSign(String sign) {
+            this.sign = sign;
+        }
+    }
+
+    @XmlRootElement(name = "xml")
+    @XmlAccessorOrder(XmlAccessOrder.ALPHABETICAL)
+    public static class TransferResult {
+        private String returnCode;
+        private String returnMsg;
+        private String resultCode;
+        private String errCode;
+        private String errCodeDes;
+        private String mchId;
+        private String partnerTradeNo;
+        private int amount;
+        private String nonceStr;
+        private String sign;
+        private String paymentNo;
+        private int cmmsAmt;
+
+        public String getReturnCode() {
+            return returnCode;
+        }
+
+        @XmlElement(name = "return_code")
+        public void setReturnCode(String returnCode) {
+            this.returnCode = returnCode;
+        }
+
+        public String getReturnMsg() {
+            return returnMsg;
+        }
+
+        @XmlElement(name = "return_msg")
+        public void setReturnMsg(String returnMsg) {
+            this.returnMsg = returnMsg;
+        }
+
+        public String getResultCode() {
+            return resultCode;
+        }
+
+        @XmlElement(name = "result_code")
+        public void setResultCode(String resultCode) {
+            this.resultCode = resultCode;
+        }
+
+        public String getErrCode() {
+            return errCode;
+        }
+
+        @XmlElement(name = "err_code")
+        public void setErrCode(String errCode) {
+            this.errCode = errCode;
+        }
+
+        public String getErrCodeDes() {
+            return errCodeDes;
+        }
+
+        @XmlElement(name = "err_code_des")
+        public void setErrCodeDes(String errCodeDes) {
+            this.errCodeDes = errCodeDes;
+        }
+
+        public String getMchId() {
+            return mchId;
+        }
+
+        @XmlElement(name = "mch_id")
+        public void setMchId(String mchId) {
+            this.mchId = mchId;
+        }
+
+        public String getPartnerTradeNo() {
+            return partnerTradeNo;
+        }
+
+        @XmlElement(name = "partner_trade_no")
+        public void setPartnerTradeNo(String partnerTradeNo) {
+            this.partnerTradeNo = partnerTradeNo;
+        }
+
+        public int getAmount() {
+            return amount;
+        }
+
+        public void setAmount(int amount) {
+            this.amount = amount;
+        }
+
+        public String getNonceStr() {
+            return nonceStr;
+        }
+
+        @XmlElement(name = "nonce_str")
+        public void setNonceStr(String nonceStr) {
+            this.nonceStr = nonceStr;
+        }
+
+        public String getSign() {
+            return sign;
+        }
+
+        public void setSign(String sign) {
+            this.sign = sign;
+        }
+
+        public String getPaymentNo() {
+            return paymentNo;
+        }
+
+        @XmlElement(name = "payment_no")
+        public void setPaymentNo(String paymentNo) {
+            this.paymentNo = paymentNo;
+        }
+
+        public int getCmmsAmt() {
+            return cmmsAmt;
+        }
+
+        @XmlElement(name = "cmms_amt")
+        public void setCmmsAmt(int cmmsAmt) {
+            this.cmmsAmt = cmmsAmt;
+        }
+
+        @Override
+        public String toString() {
+            return "TransferResult{" +
+                    "returnCode='" + returnCode + '\'' +
+                    ", returnMsg='" + returnMsg + '\'' +
+                    ", resultCode='" + resultCode + '\'' +
+                    ", errCode='" + errCode + '\'' +
+                    ", errCodeDes='" + errCodeDes + '\'' +
+                    ", mchId='" + mchId + '\'' +
+                    ", partnerTradeNo='" + partnerTradeNo + '\'' +
+                    ", amount=" + amount +
+                    ", nonceStr='" + nonceStr + '\'' +
+                    ", sign='" + sign + '\'' +
+                    ", paymentNo='" + paymentNo + '\'' +
+                    ", cmmsAmt=" + cmmsAmt +
+                    '}';
+        }
+    }
+
     public interface Signable {
         String getSign();
+
         void setSign(String sign);
+    }
+
+
+    @Value("#{wx['transferToBankUrl']}")
+    public void setTransferToBankUrl(String transferToBankUrl) {
+        WxApi.transferToBankUrl = transferToBankUrl;
+    }
+
+    @Value("#{wx['pemPath']}")
+    public void setPemPath(String pemPath) {
+        WxApi.pemPath = pemPath;
     }
 
     @Value("#{wx['payBody']}")

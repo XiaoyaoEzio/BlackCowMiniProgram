@@ -13,66 +13,6 @@
         <result column="total_money" jdbcType="INTEGER" property="totalMoney"/>
         <result column="status" jdbcType="INTEGER" property="status"/>
     </resultMap>
-    <sql id="Example_Where_Clause">
-        <where>
-            <foreach collection="oredCriteria" item="criteria" separator="or">
-                <if test="criteria.valid">
-                    <trim prefix="(" prefixOverrides="and" suffix=")">
-                        <foreach collection="criteria.criteria" item="criterion">
-                            <choose>
-                                <when test="criterion.noValue">
-                                    and ${criterion.condition}
-                                </when>
-                                <when test="criterion.singleValue">
-                                    and ${criterion.condition} #{criterion.value}
-                                </when>
-                                <when test="criterion.betweenValue">
-                                    and ${criterion.condition} #{criterion.value} and #{criterion.secondValue}
-                                </when>
-                                <when test="criterion.listValue">
-                                    and ${criterion.condition}
-                                    <foreach close=")" collection="criterion.value" item="listItem" open="("
-                                             separator=",">
-                                        #{listItem}
-                                    </foreach>
-                                </when>
-                            </choose>
-                        </foreach>
-                    </trim>
-                </if>
-            </foreach>
-        </where>
-    </sql>
-    <sql id="Update_By_Example_Where_Clause">
-        <where>
-            <foreach collection="example.oredCriteria" item="criteria" separator="or">
-                <if test="criteria.valid">
-                    <trim prefix="(" prefixOverrides="and" suffix=")">
-                        <foreach collection="criteria.criteria" item="criterion">
-                            <choose>
-                                <when test="criterion.noValue">
-                                    and ${criterion.condition}
-                                </when>
-                                <when test="criterion.singleValue">
-                                    and ${criterion.condition} #{criterion.value}
-                                </when>
-                                <when test="criterion.betweenValue">
-                                    and ${criterion.condition} #{criterion.value} and #{criterion.secondValue}
-                                </when>
-                                <when test="criterion.listValue">
-                                    and ${criterion.condition}
-                                    <foreach close=")" collection="criterion.value" item="listItem" open="("
-                                             separator=",">
-                                        #{listItem}
-                                    </foreach>
-                                </when>
-                            </choose>
-                        </foreach>
-                    </trim>
-                </if>
-            </foreach>
-        </where>
-    </sql>
     <sql id="Base_Column_List">
         id,
         user_id,
@@ -85,72 +25,29 @@
         total_money,
         status
     </sql>
-    <select id="selectByExample" parameterType="com.superyc.heiniu.bean.RechargeOrderExample" resultMap="BaseResultMap">
-        select
-        <if test="distinct">
-            distinct
-        </if>
-        <include refid="Base_Column_List"/>
-        from recharge_order
-        <if test="_parameter != null">
-            <include refid="Example_Where_Clause"/>
-        </if>
-        <if test="orderByClause != null">
-            order by ${orderByClause}
-        </if>
-    </select>
     <select id="selectByPrimaryKey" parameterType="java.lang.Integer" resultMap="BaseResultMap">
         select
         <include refid="Base_Column_List"/>
-        from recharge_order
+        from bc_recharge_order
         where id = #{id,jdbcType=INTEGER}
     </select>
-
-
-    <select id="getUnfinishedOrder" parameterType="java.lang.Integer" resultMap="BaseResultMap">
-        SELECT *
-        FROM recharge_order
-        WHERE user_id = #{userId}
-          AND status = 1
-    </select>
-
-    <select id="selectByOrderNumber" parameterType="java.lang.String" resultMap="BaseResultMap">
-        SELECT *
-        FROM recharge_order
-        WHERE order_number = #{orderNumber}
-    </select>
-
-    <select id="getOrderList" resultMap="BaseResultMap">
-        SELECT *
-        FROM recharge_order
-        WHERE status = 2
-          AND user_id = #{userId,jdbcType=INTEGER}
-        LIMIT #{page,jdbcType=INTEGER}, #{size,jdbcType=INTEGER}
-    </select>
-
     <delete id="deleteByPrimaryKey" parameterType="java.lang.Integer">
         delete
-        from recharge_order
+        from bc_recharge_order
         where id = #{id,jdbcType=INTEGER}
     </delete>
-    <delete id="deleteByExample" parameterType="com.superyc.heiniu.bean.RechargeOrderExample">
-        delete from recharge_order
-        <if test="_parameter != null">
-            <include refid="Example_Where_Clause"/>
-        </if>
-    </delete>
     <insert id="insert" parameterType="com.superyc.heiniu.bean.RechargeOrder">
-        insert into recharge_order (id, user_id, transaction_id,
-                                    order_number, creation_time, finish_time,
-                                    payment_type, payment_money, total_money,
-                                    status)
+        insert into bc_recharge_order (id, user_id, transaction_id,
+                                       order_number, creation_time, finish_time,
+                                       payment_type, payment_money, total_money,
+                                       status)
         values (#{id,jdbcType=INTEGER}, #{userId,jdbcType=INTEGER}, #{transactionId,jdbcType=CHAR},
                 #{orderNumber,jdbcType=CHAR}, #{creationTime,jdbcType=TIMESTAMP}, #{finishTime,jdbcType=TIMESTAMP},
                 #{paymentType,jdbcType=CHAR}, #{paymentMoney,jdbcType=INTEGER}, #{totalMoney,jdbcType=INTEGER},
                 #{status,jdbcType=INTEGER})
     </insert>
     <insert id="insertSelective" parameterType="com.superyc.heiniu.bean.RechargeOrder">
-        insert into recharge_order
+        insert into bc_recharge_order
         <trim prefix="(" suffix=")" suffixOverrides=",">
             <if test="id != null">
                 id,
@@ -216,70 +113,8 @@
             </if>
         </trim>
     </insert>
-    <select id="countByExample" parameterType="com.superyc.heiniu.bean.RechargeOrderExample"
-            resultType="java.lang.Long">
-        select count(*) from recharge_order
-        <if test="_parameter != null">
-            <include refid="Example_Where_Clause"/>
-        </if>
-    </select>
-
-    <update id="updateByExampleSelective" parameterType="map">
-        update recharge_order
-        <set>
-            <if test="record.id != null">
-                id = #{record.id,jdbcType=INTEGER},
-            </if>
-            <if test="record.userId != null">
-                user_id = #{record.userId,jdbcType=INTEGER},
-            </if>
-            <if test="record.transactionId != null">
-                transaction_id = #{record.transactionId,jdbcType=CHAR},
-            </if>
-            <if test="record.orderNumber != null">
-                order_number = #{record.orderNumber,jdbcType=CHAR},
-            </if>
-            <if test="record.creationTime != null">
-                creation_time = #{record.creationTime,jdbcType=TIMESTAMP},
-            </if>
-            <if test="record.finishTime != null">
-                finish_time = #{record.finishTime,jdbcType=TIMESTAMP},
-            </if>
-            <if test="record.paymentType != null">
-                payment_type = #{record.paymentType,jdbcType=CHAR},
-            </if>
-            <if test="record.paymentMoney != null">
-                payment_money = #{record.paymentMoney,jdbcType=INTEGER},
-            </if>
-            <if test="record.totalMoney != null">
-                total_money = #{record.totalMoney,jdbcType=INTEGER},
-            </if>
-            <if test="record.status != null">
-                status = #{record.status,jdbcType=INTEGER},
-            </if>
-        </set>
-        <if test="_parameter != null">
-            <include refid="Update_By_Example_Where_Clause"/>
-        </if>
-    </update>
-    <update id="updateByExample" parameterType="map">
-        update recharge_order
-        set id = #{record.id,jdbcType=INTEGER},
-        user_id = #{record.userId,jdbcType=INTEGER},
-        transaction_id = #{record.transactionId,jdbcType=CHAR},
-        order_number = #{record.orderNumber,jdbcType=CHAR},
-        creation_time = #{record.creationTime,jdbcType=TIMESTAMP},
-        finish_time = #{record.finishTime,jdbcType=TIMESTAMP},
-        payment_type = #{record.paymentType,jdbcType=CHAR},
-        payment_money = #{record.paymentMoney,jdbcType=INTEGER},
-        total_money = #{record.totalMoney,jdbcType=INTEGER},
-        status = #{record.status,jdbcType=INTEGER}
-        <if test="_parameter != null">
-            <include refid="Update_By_Example_Where_Clause"/>
-        </if>
-    </update>
     <update id="updateByPrimaryKeySelective" parameterType="com.superyc.heiniu.bean.RechargeOrder">
-        update recharge_order
+        update bc_recharge_order
         <set>
             <if test="userId != null">
                 user_id = #{userId,jdbcType=INTEGER},
@@ -312,7 +147,7 @@
         where id = #{id,jdbcType=INTEGER}
     </update>
     <update id="updateByPrimaryKey" parameterType="com.superyc.heiniu.bean.RechargeOrder">
-        update recharge_order
+        update bc_recharge_order
         set user_id        = #{userId,jdbcType=INTEGER},
             transaction_id = #{transactionId,jdbcType=CHAR},
             order_number   = #{orderNumber,jdbcType=CHAR},
@@ -324,4 +159,21 @@
             status         = #{status,jdbcType=INTEGER}
         where id = #{id,jdbcType=INTEGER}
     </update>
+    <select id="getUnfinishedOrder" resultMap="BaseResultMap">
+        SELECT *
+        FROM bc_recharge_order
+        WHERE status = 1
+          AND user_id = #{userId}
+    </select>
+    <select id="selectByOrderNumber" resultMap="BaseResultMap">
+        SELECT *
+        FROM bc_recharge_order
+        WHERE order_number = #{orderNumber}
+    </select>
+    <select id="getOrderList" resultMap="BaseResultMap">
+        SELECT *
+        FROM bc_recharge_order
+        WHERE user_id = #{userId}
+        LIMIT #{size} OFFSET #{offset}
+    </select>
 </mapper>

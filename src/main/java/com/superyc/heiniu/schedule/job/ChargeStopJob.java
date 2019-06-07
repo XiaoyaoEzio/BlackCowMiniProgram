@@ -1,34 +1,43 @@
 package com.superyc.heiniu.schedule.job;
 
 import org.quartz.Job;
-import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * 用来定时停止充电
+ * 定时关闭端口
  */
 @Component
 public class ChargeStopJob implements Job {
-    private static final Logger logger = LoggerFactory.getLogger(ChargeStopJob.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ChargeStopJob.class);
 
+    private int userId;
+    private int deviceId;
+    private String  deviceNum;
+    private int pathId;
 
     @Override
-    public void execute(JobExecutionContext jobContext) throws JobExecutionException {
-        JobDataMap dataMap = jobContext.getJobDetail().getJobDataMap();
-        int clientId = dataMap.getInt("userId");
-        String deviceSn = dataMap.getString("deviceId");
-        String path = dataMap.getString("path");
-
-        logger.info("clientId：" + clientId);
-        logger.info("deviceSn：" + deviceSn);
-        logger.info("path：" + path);
-
-
+    public void execute(JobExecutionContext jobContext) {
         // TODO 停止设备
-        logger.info("定时关闭端口");
+        LOG.info("定时关闭端口  userId:{}  deviceId:{}  pathId:{}", userId, deviceId, pathId);
+
+    }
+
+    public void setUserId(int userId) {
+        this.userId = userId;
+    }
+
+    public void setDeviceId(int deviceId) {
+        this.deviceId = deviceId;
+    }
+
+    public void setDeviceNum(String deviceNum) {
+        this.deviceNum = deviceNum;
+    }
+
+    public void setPathId(int pathId) {
+        this.pathId = pathId;
     }
 }

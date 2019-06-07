@@ -24,10 +24,9 @@ public interface RechargeService {
 
     /**
      * 处理微信的回调请求
-     * @param callbackResult
      */
     WxApi.AfterPayCallbackResponse callback(WxApi.AfterPayCallbackParam callbackResult) throws NoSuchMethodException,
-            IllegalAccessException, InvocationTargetException, ParseException;
+            IllegalAccessException, InvocationTargetException, ParseException, IOException;
 
     /**
      * 获取充值记录

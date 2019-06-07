@@ -9,13 +9,13 @@ import com.superyc.heiniu.enums.ResponseCodeEnum;
 import com.superyc.heiniu.utils.HttpUtils;
 import com.superyc.heiniu.utils.JsonUtils;
 import com.superyc.heiniu.utils.RandomUtils;
+import com.superyc.heiniu.utils.TimeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
@@ -31,12 +31,8 @@ public class DeviceApiPandaImpl implements DeviceApi {
     private static String mchId;
     private static String pandaUrl;
 
-    private final String START = "start";
-    private final String STOP = "reset";
-
     @Override
-    public Map<String, String> getDeviceState(String deviceNum) throws IOException, NoSuchMethodException,
-            IllegalAccessException, InvocationTargetException {
+    public Map<String, String> getDeviceState(String deviceNum) throws IOException {
         Map<String, String> map = new HashMap<>();
         // 查询设备状态时，端口填00
         String STATE_COMMAND = "state";
@@ -73,32 +69,21 @@ public class DeviceApiPandaImpl implements DeviceApi {
     }
 
     @Override
-    public CommonResponse startPath(String deviceNum, int pathId) throws IOException, NoSuchMethodException,
-            IllegalAccessException, InvocationTargetException {
+    public CommonResponse startPath(String deviceNum, int pathId) throws IOException {
         String START_COMMAND = "start";
         return startOrStop(START_COMMAND, deviceNum, pathId);
     }
 
     @Override
-    public CommonResponse stop(String deviceNum, int pathId) throws InvocationTargetException, NoSuchMethodException,
-            IOException, IllegalAccessException {
+    public CommonResponse stop(String deviceNum, int pathId) throws IOException {
         String STOP_COMMAND = "stop";
         return startOrStop(STOP_COMMAND, deviceNum, pathId);
     }
 
     /**
      * 开启或者关闭设备端口
-     * @param command
-     * @param deviceNum
-     * @param pathId
-     * @return
-     * @throws InvocationTargetException
-     * @throws NoSuchMethodException
-     * @throws IOException
-     * @throws IllegalAccessException
      */
-    private CommonResponse startOrStop(String command, String deviceNum, int pathId) throws InvocationTargetException
-            , NoSuchMethodException, IOException, IllegalAccessException {
+    private CommonResponse startOrStop(String command, String deviceNum, int pathId) throws IOException {
         String pathIdStr = pathId == 10 ? String.valueOf(pathId) : "0" + pathId;
         JsonNode response = operate(command, deviceNum, pathIdStr);
         int result = response.get("result").asInt();
@@ -119,13 +104,12 @@ public class DeviceApiPandaImpl implements DeviceApi {
      * @param deviceNum 设备编号
      * @param pathId    端口编号
      */
-    private JsonNode operate(String command, String deviceNum, String pathId) throws NoSuchMethodException,
-            IllegalAccessException, InvocationTargetException, IOException {
+    private JsonNode operate(String command, String deviceNum, String pathId) throws IOException {
         QueryParam param = new QueryParam();
         param.setInfo(command, deviceNum, pathId);
         String paramJson = JsonUtils.getString(param);
 
-        log.debug("panda param: {}", paramJson);
+        log.debug("panda request: {}", paramJson);
         String response = HttpUtils.postJson(pandaUrl, paramJson);
         log.info("panda response: {}", response);
 
@@ -154,6 +138,7 @@ public class DeviceApiPandaImpl implements DeviceApi {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
+    @SuppressWarnings({"unused", "SameParameterValue"})
     public class QueryParam {
         private String appid;
         private String mchid;
@@ -167,13 +152,12 @@ public class DeviceApiPandaImpl implements DeviceApi {
         private String attach;
         private String command;
 
-        public void setInfo(String command, String deviceNum, String pathId) throws NoSuchMethodException,
-                IllegalAccessException, InvocationTargetException {
+        void setInfo(String command, String deviceNum, String pathId) {
             this.setAppid(DeviceApiPandaImpl.appId);
             this.setMchid(DeviceApiPandaImpl.mchId);
             this.setNonce_str(RandomUtils.getUUID());
             this.setSign_type("MD5");
-            this.setTime(Long.toString(RandomUtils.getCurrentTime() / 1000));
+            this.setTime(Long.toString(TimeUtils.getCurrentTime() / 1000));
             this.setOpenid("BlackCow");
             this.setDevice_id(deviceNum);
             this.setDevice_path(pathId);
@@ -185,7 +169,7 @@ public class DeviceApiPandaImpl implements DeviceApi {
             return appid;
         }
 
-        public void setAppid(String appid) {
+        void setAppid(String appid) {
             this.appid = appid;
         }
 
@@ -193,7 +177,7 @@ public class DeviceApiPandaImpl implements DeviceApi {
             return mchid;
         }
 
-        public void setMchid(String mchid) {
+        void setMchid(String mchid) {
             this.mchid = mchid;
         }
 
@@ -201,7 +185,7 @@ public class DeviceApiPandaImpl implements DeviceApi {
             return nonce_str;
         }
 
-        public void setNonce_str(String nonce_str) {
+        void setNonce_str(String nonce_str) {
             this.nonce_str = nonce_str;
         }
 
@@ -209,7 +193,7 @@ public class DeviceApiPandaImpl implements DeviceApi {
             return sign;
         }
 
-        public void setSign(String sign) {
+        void setSign(String sign) {
             this.sign = sign;
         }
 
@@ -217,7 +201,7 @@ public class DeviceApiPandaImpl implements DeviceApi {
             return sign_type;
         }
 
-        public void setSign_type(String sign_type) {
+        void setSign_type(String sign_type) {
             this.sign_type = sign_type;
         }
 
@@ -225,7 +209,7 @@ public class DeviceApiPandaImpl implements DeviceApi {
             return time;
         }
 
-        public void setTime(String time) {
+        void setTime(String time) {
             this.time = time;
         }
 
@@ -233,7 +217,7 @@ public class DeviceApiPandaImpl implements DeviceApi {
             return device_id;
         }
 
-        public void setDevice_id(String device_id) {
+        void setDevice_id(String device_id) {
             this.device_id = device_id;
         }
 
@@ -241,7 +225,7 @@ public class DeviceApiPandaImpl implements DeviceApi {
             return device_path;
         }
 
-        public void setDevice_path(String device_path) {
+        void setDevice_path(String device_path) {
             this.device_path = device_path;
         }
 
@@ -249,7 +233,7 @@ public class DeviceApiPandaImpl implements DeviceApi {
             return openid;
         }
 
-        public void setOpenid(String openid) {
+        void setOpenid(String openid) {
             this.openid = openid;
         }
 
@@ -265,7 +249,7 @@ public class DeviceApiPandaImpl implements DeviceApi {
             return command;
         }
 
-        public void setCommand(String command) {
+        void setCommand(String command) {
             this.command = command;
         }
     }

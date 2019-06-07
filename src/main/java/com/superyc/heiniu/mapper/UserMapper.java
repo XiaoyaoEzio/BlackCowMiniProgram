@@ -21,4 +21,6 @@ public interface UserMapper {
     String getMiniOpenIdByUserId(int id);
 
     int updateBalance(@Param("id") Integer id, @Param("alteration") int alteration);
+
+    int getGroupId(int id);
 }

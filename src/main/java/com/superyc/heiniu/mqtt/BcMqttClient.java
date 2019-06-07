@@ -1,7 +1,7 @@
 package com.superyc.heiniu.mqtt;
 
 import com.superyc.heiniu.utils.MqttUtils;
-import com.superyc.heiniu.utils.RandomUtils;
+import com.superyc.heiniu.utils.TimeUtils;
 import org.eclipse.paho.client.mqttv3.*;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.slf4j.Logger;
@@ -15,7 +15,7 @@ public class BcMqttClient {
     private MqttClient client;
 
     public void subscribe(String deviceNum, BcMqttManager manager) throws MqttException {
-        String clientId = "BCClient" + RandomUtils.getCurrentTime();
+        String clientId = "BCClient" + TimeUtils.getCurrentTime();
         // 连接服务器
         client = new MqttClient(MqttUtils.getBroker(), clientId, new MemoryPersistence());
         MqttConnectOptions options = new MqttConnectOptions();

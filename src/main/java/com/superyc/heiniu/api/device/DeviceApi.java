@@ -23,6 +23,6 @@ public interface DeviceApi {
             NoSuchMethodException, IllegalAccessException, InvocationTargetException;
 
 
-    CommonResponse stop(String deviceId, int pathId) throws InvocationTargetException, NoSuchMethodException,
+    CommonResponse stop(String deviceNum, int pathId) throws InvocationTargetException, NoSuchMethodException,
             IOException, IllegalAccessException;
 }

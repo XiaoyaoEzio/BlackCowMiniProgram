@@ -13,6 +13,8 @@ public class ChargeOrder {
 
     private Date finishTime;
 
+    private Integer rankId;
+
     private Integer money;
 
     private Integer deviceId;
@@ -61,6 +63,14 @@ public class ChargeOrder {
 
     public void setFinishTime(Date finishTime) {
         this.finishTime = finishTime;
+    }
+
+    public Integer getRankId() {
+        return rankId;
+    }
+
+    public void setRankId(Integer rankId) {
+        this.rankId = rankId;
     }
 
     public Integer getMoney() {

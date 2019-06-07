@@ -54,6 +54,9 @@ public class UserController {
         return rechargeService.recharge(userId, rankId, userIp);
     }
 
+    /**
+     * 充值列表
+     */
     @RequestMapping(value = "/recharge/list", method = RequestMethod.POST)
     public CommonResponse rechargeList(
             @RequestParam("page") int page,

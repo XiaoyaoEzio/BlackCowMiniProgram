@@ -27,17 +27,18 @@ public class DeviceController {
 
     /**
      * 用户扫码入口
-     * @param deviceNum 设备编号
-     *
      */
     @RequestMapping("/info")
     public CommonResponse deviceInfo(
-            @RequestParam("deviceNum") String deviceNum
+            @RequestParam("deviceId") int deviceId
     ) throws IOException, InterruptedException, MqttException, NoSuchMethodException, IllegalAccessException,
             InvocationTargetException {
-        return deviceService.getDeviceInfo(deviceNum);
+        return deviceService.getDeviceInfo(deviceId);
     }
 
+    /**
+     * 开始充电
+     */
     @RequestMapping(value = "/handle", method = RequestMethod.POST)
     public CommonResponse handleCharge(
             @RequestParam("deviceId") int deviceId,
@@ -52,9 +53,15 @@ public class DeviceController {
         return deviceService.startCharge(deviceId, pathId, rankId, userId);
     }
 
+    /**
+     * 停止充电
+     */
     @RequestMapping(value = "/stop", method = RequestMethod.POST)
-    public CommonResponse stopCharge(@RequestParam("deviceId") int deviceId,
-                                     @RequestParam("pathId") int pathId,HttpServletRequest request) throws InvocationTargetException, NoSuchMethodException, IllegalAccessException, IOException {
+    public CommonResponse stopCharge(
+            @RequestParam("deviceId") int deviceId,
+            @RequestParam("pathId") int pathId,
+            HttpServletRequest request
+    ) throws InvocationTargetException, NoSuchMethodException, IllegalAccessException, IOException {
         // TODO 测试
         int userId = 1;
         //int userId = (int) request.getAttribute(userIdKey);

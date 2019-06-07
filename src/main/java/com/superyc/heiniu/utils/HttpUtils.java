@@ -1,5 +1,6 @@
 package com.superyc.heiniu.utils;
 
+import com.superyc.heiniu.exception.ErrorResponseCodeException;
 import okhttp3.*;
 import org.springframework.stereotype.Component;
 
@@ -44,7 +45,7 @@ public class HttpUtils {
         Response response = httpClient.newCall(request).execute();
 
         if (!response.isSuccessful()) {
-            throw new IOException("Unexpected code " + response);
+            throw new ErrorResponseCodeException("Unexpected code " + response);
         }
 
         return response.body() == null ? null : response.body().string();

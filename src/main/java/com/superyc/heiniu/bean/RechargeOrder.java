@@ -1,10 +1,7 @@
 package com.superyc.heiniu.bean;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
+import java.util.Date;
 
-import java.sql.Timestamp;
-
-@JsonInclude(JsonInclude.Include.NON_EMPTY)
 public class RechargeOrder {
     private Integer id;
 
@@ -14,9 +11,9 @@ public class RechargeOrder {
 
     private String orderNumber;
 
-    private Timestamp creationTime;
+    private Date creationTime;
 
-    private Timestamp finishTime;
+    private Date finishTime;
 
     private String paymentType;
 
@@ -58,19 +55,19 @@ public class RechargeOrder {
         this.orderNumber = orderNumber == null ? null : orderNumber.trim();
     }
 
-    public Timestamp getCreationTime() {
+    public Date getCreationTime() {
         return creationTime;
     }
 
-    public void setCreationTime(Timestamp creationTime) {
+    public void setCreationTime(Date creationTime) {
         this.creationTime = creationTime;
     }
 
-    public Timestamp getFinishTime() {
+    public Date getFinishTime() {
         return finishTime;
     }
 
-    public void setFinishTime(Timestamp finishTime) {
+    public void setFinishTime(Date finishTime) {
         this.finishTime = finishTime;
     }
 

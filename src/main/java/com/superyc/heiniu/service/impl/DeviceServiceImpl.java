@@ -2,15 +2,19 @@ package com.superyc.heiniu.service.impl;
 
 import com.superyc.heiniu.api.device.DeviceApiFactory;
 import com.superyc.heiniu.bean.*;
-import com.superyc.heiniu.enums.ChargeOrderStatusEnum;
 import com.superyc.heiniu.enums.ChargePayMode;
+import com.superyc.heiniu.enums.OrderStatusEnum;
 import com.superyc.heiniu.enums.ProxyModeEnum;
 import com.superyc.heiniu.enums.ResponseCodeEnum;
+import com.superyc.heiniu.exception.PandaCloudException;
 import com.superyc.heiniu.mapper.*;
 import com.superyc.heiniu.schedule.QuartzJobUtils;
 import com.superyc.heiniu.service.DeviceService;
 import com.superyc.heiniu.utils.OrderNumberUtils;
+import com.superyc.heiniu.utils.TimeUtils;
 import org.eclipse.paho.client.mqttv3.MqttException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +31,7 @@ import java.util.Map;
  */
 @Service
 public class DeviceServiceImpl implements DeviceService {
+    private Logger LOG = LoggerFactory.getLogger(this.getClass());
     private UserMapper userMapper;
     private DeviceMapper deviceMapper;
     private ChargeRankMapper chargeRankMapper;
@@ -35,17 +40,18 @@ public class DeviceServiceImpl implements DeviceService {
     private ProxyClientMapper proxyClientMapper;
 
     @Override
-    public CommonResponse getDeviceInfo(String deviceNum) throws IOException, InterruptedException, MqttException,
+    public CommonResponse getDeviceInfo(int deviceId) throws IOException, InterruptedException, MqttException,
             NoSuchMethodException, IllegalAccessException, InvocationTargetException {
         // 查询设备信息，封装
-        Device device = deviceMapper.selectByDeviceNum(deviceNum);
+        Device device = deviceMapper.selectByPrimaryKey(deviceId);
         if (device == null) {
             return CommonResponse.failure(ResponseCodeEnum.DEVICE_NOT_FOUND);
         }
 
         StateResult result = new StateResult();
-        result.setId(device.getId());
+        result.setId(deviceId);
         result.setDeviceName(device.getDeviceName());
+        String deviceNum = device.getDeviceNumber();
         result.setDeviceNumber(deviceNum);
         result.setPricePerHour(electricityPriceMapper.selectPriceByDeviceId(device.getId()));
         result.setChargeRank(chargeRankMapper.selectAll());
@@ -55,6 +61,7 @@ public class DeviceServiceImpl implements DeviceService {
         for (Map.Entry<String, String> entry : stateMap.entrySet()) {
             // key为-1, 说明熊猫云服务器返回值异常
             if ("-1".equals(entry.getKey())) {
+                LOG.error("panda cloud error: {}", entry.getValue());
                 return CommonResponse.failure(ResponseCodeEnum.PANDA_CLOUD_ERROR,
                         "panda cloud error：" + entry.getValue());
             }
@@ -90,7 +97,7 @@ public class DeviceServiceImpl implements DeviceService {
     @Override
     @Transactional
     public CommonResponse startCharge(int deviceId, int pathId, int rankId, int userId) throws InterruptedException,
-            IOException, MqttException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+            IOException, NoSuchMethodException, IllegalAccessException, InvocationTargetException, MqttException {
         User user = userMapper.selectByPrimaryKey(userId);
         if (user == null) {
             return CommonResponse.failure(ResponseCodeEnum.USER_NOT_FOUND);
@@ -144,22 +151,23 @@ public class DeviceServiceImpl implements DeviceService {
         chargeOrder.setOrderNumber(OrderNumberUtils.getConsumeOrderNumber());
         chargeOrder.setPathId(pathId);
         chargeOrder.setUserId(userId);
-        chargeOrder.setStatus(ChargeOrderStatusEnum.CHARGING.getValue());
+        chargeOrder.setStatus(OrderStatusEnum.DEALING.getValue());
         chargeOrder.setMoney(totalFee);
         chargeOrder.setPayMode(payMode);
+        chargeOrder.setRankId(rankId);
         chargeOrderMapper.insert(chargeOrder);
 
         // 开启端口
         // TODO 改为抛异常
-        CommonResponse startPathResult =
-                DeviceApiFactory.getApi(device.getDeviceNumber()).startPath(device.getDeviceNumber(), pathId);
+
+        String deviceNum = device.getDeviceNumber();
+        CommonResponse startPathResult = DeviceApiFactory.getApi(deviceNum).startPath(deviceNum, pathId);
         if (!CommonResponse.isSuccess(startPathResult)) {
             return startPathResult;
         }
 
         // TODO 改为抛异常
-        boolean startResult = QuartzJobUtils.startCharge(chargeTime, userId, device.getDeviceNumber(),
-                String.valueOf(pathId));
+        boolean startResult = QuartzJobUtils.startCharge(chargeTime, userId, deviceId, deviceNum, pathId);
         if (!startResult) {
             return CommonResponse.failure(ResponseCodeEnum.QUARTZ_START_ERROR);
         }
@@ -167,7 +175,11 @@ public class DeviceServiceImpl implements DeviceService {
         return CommonResponse.success(chargeOrder);
     }
 
+    /**
+     * 停止充电，结束点单，扣费
+     */
     @Override
+    @Transactional
     public CommonResponse stopCharge(int deviceId, int pathId, int userId) throws NoSuchMethodException, IOException,
             IllegalAccessException, InvocationTargetException {
         User user = userMapper.selectByPrimaryKey(userId);
@@ -180,10 +192,52 @@ public class DeviceServiceImpl implements DeviceService {
             return CommonResponse.failure(ResponseCodeEnum.DEVICE_NOT_FOUND);
         }
 
+        ChargeOrder unfinishedOrder = chargeOrderMapper.selectFirstUnfinishedOrderByUserId(userId);
+        if (unfinishedOrder == null) {
+            return CommonResponse.failure(ResponseCodeEnum.HAS_NO_CHARGING_ORDER);
+        }
+
+        unfinishedOrder.setFinishTime(new Timestamp(System.currentTimeMillis()));
+        unfinishedOrder.setStatus(OrderStatusEnum.FINISHED.getValue());
+
+        //**** 计算充电时长 ****//
+        int actualTime = TimeUtils.getHours(unfinishedOrder.getCreationTime(), unfinishedOrder.getFinishTime());
+        int selectTime = chargeRankMapper.selectByPrimaryKey(unfinishedOrder.getRankId()).getTime();
+        int interval = 1000 * 60 * 30;
+        double chargeTime;
+
+        /*
+         * 充电时间略大于选择时间（考虑到系统延时） 或者 实际充电时间与选择时间间隔小于半小时。按照选择时间算
+         * 实际充电时间与选择时间相差超过半小时，按照 实际充电时间+半小时 算
+         */
+        if (actualTime >= selectTime || selectTime - actualTime <= interval) {
+            chargeTime = selectTime;
+        } else {
+            chargeTime = actualTime + 0.5;
+        }
+
+        // **** 扣费 **** //
+        int payment = new Double(chargeTime * electricityPriceMapper.selectPriceByDeviceId(deviceId)).intValue();
+        Integer payMode = unfinishedOrder.getPayMode();
+        if (payMode.equals(ChargePayMode.USER.getValue())) {
+            userMapper.updateBalance(userId, -payment);
+        } else {
+            proxyClientMapper.updateBalance(user.getGroupId(), -payment);
+        }
+        unfinishedOrder.setMoney(payment);
+        chargeOrderMapper.updateByPrimaryKey(unfinishedOrder);
+
+        // **** 关闭端口 **** //
         String deviceNum = device.getDeviceNumber();
         CommonResponse stopResult = DeviceApiFactory.getApi(deviceNum).stop(deviceNum, pathId);
+        if (stopResult.getStatus() != ResponseCodeEnum.OK.getValue()) {
+            LOG.error("close path error\n\tdeviceId:{}, pathId:{}", deviceId, pathId);
+            throw new PandaCloudException(stopResult.getMessage());
+        }
 
-        return null;
+        // **** 停止定时任务 **** //
+        QuartzJobUtils.stopJobs(userId);
+        return CommonResponse.success();
     }
 
     @Autowired
@@ -219,6 +273,7 @@ public class DeviceServiceImpl implements DeviceService {
     /**
      * 用于封装返回给前端的参数
      */
+    @SuppressWarnings("unused")
     public class StateResult {
         private int id;
         private String deviceName;
@@ -239,7 +294,7 @@ public class DeviceServiceImpl implements DeviceService {
             return deviceName;
         }
 
-        public void setDeviceName(String deviceName) {
+        void setDeviceName(String deviceName) {
             this.deviceName = deviceName;
         }
 
@@ -247,7 +302,7 @@ public class DeviceServiceImpl implements DeviceService {
             return deviceNumber;
         }
 
-        public void setDeviceNumber(String deviceNumber) {
+        void setDeviceNumber(String deviceNumber) {
             this.deviceNumber = deviceNumber;
         }
 
@@ -255,7 +310,7 @@ public class DeviceServiceImpl implements DeviceService {
             return pricePerHour;
         }
 
-        public void setPricePerHour(int pricePerHour) {
+        void setPricePerHour(int pricePerHour) {
             this.pricePerHour = pricePerHour;
         }
 
@@ -263,7 +318,7 @@ public class DeviceServiceImpl implements DeviceService {
             return ports;
         }
 
-        public void setPorts(List<PortInfo> ports) {
+        void setPorts(List<PortInfo> ports) {
             this.ports = ports;
         }
 
@@ -271,7 +326,7 @@ public class DeviceServiceImpl implements DeviceService {
             return chargeRank;
         }
 
-        public void setChargeRank(List<ChargeRank> chargeRank) {
+        void setChargeRank(List<ChargeRank> chargeRank) {
             this.chargeRank = chargeRank;
         }
     }
@@ -279,6 +334,7 @@ public class DeviceServiceImpl implements DeviceService {
     /**
      * 端口信息
      */
+    @SuppressWarnings("unused")
     public static class PortInfo {
         private int id;
         private int status;

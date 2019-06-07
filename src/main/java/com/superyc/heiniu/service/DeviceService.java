@@ -11,9 +11,9 @@ import java.lang.reflect.InvocationTargetException;
  */
 public interface DeviceService {
     /**
-     * 根据设备编号获取设备端口信息
+     * 根据设备id获取设备端口信息
      */
-    CommonResponse getDeviceInfo(String deviceNum) throws IOException, InterruptedException, MqttException,
+    CommonResponse getDeviceInfo(int deviceId) throws IOException, InterruptedException, MqttException,
             NoSuchMethodException, IllegalAccessException, InvocationTargetException;
 
     /**

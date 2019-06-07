@@ -1,6 +1,6 @@
 package com.superyc.heiniu.bean;
 
-import java.sql.Timestamp;
+import java.util.Date;
 
 public class Session {
     private Integer id;
@@ -9,7 +9,7 @@ public class Session {
 
     private Integer userId;
 
-    private Timestamp expiredTime;
+    private Date expiredTime;
 
     public Integer getId() {
         return id;
@@ -35,11 +35,11 @@ public class Session {
         this.userId = userId;
     }
 
-    public Timestamp getExpiredTime() {
+    public Date getExpiredTime() {
         return expiredTime;
     }
 
-    public void setExpiredTime(Timestamp expiredTime) {
+    public void setExpiredTime(Date expiredTime) {
         this.expiredTime = expiredTime;
     }
 }

@@ -20,7 +20,5 @@ public class RandomUtils {
         return stringBuilder.toString();
     }
 
-    public static long getCurrentTime() {
-        return System.currentTimeMillis();
-    }
+
 }

@@ -50,7 +50,7 @@
         </javaClientGenerator>
 
         <!-- 指定数据库表 -->
-        <table tableName="bc_user"
+        <table tableName="bc_session"
                enableCountByExample="false"
                enableUpdateByExample="false"
                enableDeleteByExample="false"

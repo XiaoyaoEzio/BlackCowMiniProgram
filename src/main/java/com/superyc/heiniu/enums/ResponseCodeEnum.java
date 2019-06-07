@@ -21,6 +21,7 @@ public enum ResponseCodeEnum {
     WX_PAY_BLANK_SIGN(3001, "统一下单返回参数无签名"),
     WX_PAY_ERROR_SIGN(3002, "签名校验失败"),
     HAS_UNFINISHED_ORDER(3003, "存在未完成订单"),
+    HAS_NO_CHARGING_ORDER(3004, "没有充电中的订单"),
 
     INSUFFICIENT_USER_BALANCE(4001, "用户余额不足"),
     INSUFFICIENT_GROUP_BALANCE(4002, "集团余额不足"),

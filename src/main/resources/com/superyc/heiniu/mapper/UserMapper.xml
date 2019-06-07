@@ -151,4 +151,10 @@
         SET balance = balance + #{alteration,jdbcType=INTEGER}
         WHERE id = #{id,jdbcType=INTEGER}
     </update>
+
+    <select id="getGroupId" resultType="int">
+        SELECT bc_user.group_id
+        FROM bc_user
+        WHERE id = #{id};
+    </select>
 </mapper>

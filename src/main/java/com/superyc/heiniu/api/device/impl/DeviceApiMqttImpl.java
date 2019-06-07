@@ -10,7 +10,6 @@ import com.superyc.heiniu.utils.JsonUtils;
 import org.eclipse.paho.client.mqttv3.MqttException;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
 /**
@@ -47,7 +46,7 @@ public class DeviceApiMqttImpl implements DeviceApi {
     }
 
     @Override
-    public CommonResponse startPath(String deviceNum, int pathId) throws MqttException, InterruptedException, IOException, NoSuchMethodException, IllegalAccessException, InvocationTargetException {
+    public CommonResponse startPath(String deviceNum, int pathId) throws MqttException, InterruptedException, IOException {
         String pathIdStr = pathId == 10 ? String.valueOf(pathId) : "0" + pathId;
         String timeStamp = "";
         String startCommand = "<<" + timeStamp + ":P" + pathIdStr + START + ">>";
@@ -61,7 +60,7 @@ public class DeviceApiMqttImpl implements DeviceApi {
     }
 
     @Override
-    public CommonResponse stop(String deviceId, int pathId) throws InvocationTargetException, NoSuchMethodException, IOException, IllegalAccessException {
+    public CommonResponse stop(String deviceNum, int pathId) {
         return null;
     }
 
